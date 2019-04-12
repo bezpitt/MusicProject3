@@ -3,13 +3,13 @@
 classdef objNote
     properties
         % Must be provided
-        noteNumber                                                          % Note number in MIDI in string
         temperament                                                         % just or equal
-        key                                                                 % Required for Just temperament
+        key                                                                 % Required for Just temperament       
         startTime                                                           % Start of the NOte
         endTime                                                             % End time stamp of the note
+        noteNumber                                                          % Note number in MIDI in string
+        amplitude    = 1                                                  % amplitude 
         instrument
-        amplitude         = 1                                               % amplitude 
         
         % Calculated
         frequency                                                           % Derived from note and temperament
@@ -28,7 +28,7 @@ classdef objNote
         justKeyRef        = [60:71;60:71]-60;
     end
     methods
-        function obj = objNote(noteNumber,temperament,key,startTime,endTime,amplitude)
+        function obj = objNote(temperament,key,startTime,endTime,noteNumber,amplitude,instrument )
             if nargin >= 5
                 % Only create a non-empty object if the number of inputs is
                 % correct

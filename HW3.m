@@ -1,5 +1,6 @@
 clear all
-FILE = fopen('ROW.mid', 'r');
+tic
+FILE = fopen('furelise.mid', 'r');
 Mid =  fread(FILE);
 file_length = length(Mid);
 chunk_length = 0;
@@ -7,6 +8,25 @@ endtrack = 1;
 cmd_cnter = 1;
 Cmnd_Matrix = [0 0 0 0 0];
 trk_cntr = 1;
+
+%%%%%%%%%%%%%%%%%%
+% PROGRAM CONSTANTS
+constants                              = confConstants;
+constants.BufferSize                   = 882;                                                    % Samples
+constants.SamplingRate                 = 44100;                                                  % Samples per Second
+constants.QueueDuration                = 0.1;                                                    % Seconds - Sets the latency in the objects
+constants.TimePerBuffer                = constants.BufferSize / constants.SamplingRate;          % Seconds;
+
+oscParams                              =confOsc;
+oscParams.oscType                      = 'sine';
+oscParams.oscAmpEnv.StartPoint         = 0;
+oscParams.oscAmpEnv.ReleasePoint       = Inf;   % Time to release the note
+oscParams.oscAmpEnv.AttackTime         = .125;%.02;  %Attack time in seconds
+oscParams.oscAmpEnv.DecayTime          = .125;%.01;  %Decay time in seconds
+oscParams.oscAmpEnv.SustainLevel       = .5;%0.7;  % Sustain level
+oscParams.oscAmpEnv.ReleaseTime        = .25;%.05;  % Time to release from sustain to zero
+%%%%%%%%%%%%%%%%%%%%
+
 if( (Mid(1) == 77) && (Mid(2) == 84) && (Mid(3) == 104) && (Mid(4) == 100) )%If valid Mthd
     num_tracks = Mid(11)*16 + Mid(12);
     pulses_per_quarter = Mid(13)*16 + Mid(14);
@@ -39,7 +59,7 @@ if( (Mid(1) == 77) && (Mid(2) == 84) && (Mid(3) == 104) && (Mid(4) == 100) )%If 
                         case 81
                             endtrack = 0;
                             k = k+2;
-                            micros_per_quarter = Mid(k)*256 + Mid(k+1)*16 + Mid(k+2);
+                            micros_per_quarter = Mid(k)*2^16 + Mid(k+1)*2^8 + Mid(k+2);%This line is fucked
                             k=k+3;%Goes to next command
                         case 3%Name of track. We don't care so we skip it
                             while Mid(k) ~= 0
@@ -201,11 +221,50 @@ if( (Mid(1) == 77) && (Mid(2) == 84) && (Mid(3) == 104) && (Mid(4) == 100) )%If 
     end
 end
 %Parsing worked for row-row now let's play some music
+% [time on/off note pressure instrument]
+final_Matrices(1) = [];
+Length = length(final_Matrices);
 
-Length = size(final_Matrices);
-Length = Length(2);
+%This for loop gets rid of empty rows. Since 0 is a subaudible frequency,
+%it doesn't matter that we may potentially remove those notes
+%Also reformats to start and end times
+New_Matrices = [];
+for k = 1:Length%Goes through all matrices in final_Matrices
+%k = 3;
+    new = 1;
+    Current_Matrix = final_Matrices{k};
+    Current_Matrix = Current_Matrix(Current_Matrix(:,3) ~= 0,:);
+    curlength = length(Current_Matrix);
+    New_Matrix = zeros(1,5);
+    for h = 1:curlength%Sweep through Current_matrix looking for notes on
+        if Current_Matrix(h,2) == 1%if note on
+            for p = h:length(Current_Matrix)%Sweep until note appears again
+                if Current_Matrix(h,3) == Current_Matrix(p,3)
+                    if (Current_Matrix(p,4)  == 0) || (Current_Matrix(p,2)  == 0)
+                        Current_Matrix(h,2) = Current_Matrix(p,1);%Puts end time in column 2
+                        New_Matrix(new,:) = Current_Matrix(h,:);
+                        new = new + 1;
+                        break;%Breaks out of p loop
+                    end
+                end
+            end
+        end
+    end
+    %New_Matrices = New_Matrix
+    New_Matrices = [New_Matrices; New_Matrix];
+end
+New_Matrices = sortrows(New_Matrices);
+%Have to do time conversion
+New_Matrices(:,1:2) = New_Matrices(:,1:2)* 10^-6 * (micros_per_quarter/pulses_per_quarter);%should be 10^-6
+%micros per quarter is wrong
+noteObjArray = objList(New_Matrices);
+toc
+playAudio(noteObjArray, oscParams, constants);
+% [on_time off_time note pressure instrument]
+
+%Length = Length(2);
 %final_Matrices{1} = [];
-
+%{
 for k = 2:Length%First is empty
     Here = final_Matrices{k};
     for inc = 1:size(Here,1)
@@ -218,6 +277,6 @@ for k = 2:Length%First is empty
     cur_matrix = final_Matrices(k);
     final_Matrices(k) = sortrows(final_Matrices(k),
 end
-
+%}
 
 

@@ -61,6 +61,19 @@ classdef objOsc < matlab.System
                 if all (mask == 0)
                     audio = zeros(1,obj.constants.BufferSize).';
                 else
+                     %audio=obj.note.amplitude.*mask(:).*sin(2*pi*obj.note.frequency*timeVec);
+                   
+                     IMAX = .5;
+                    
+                            %F1 = E1*A;
+                            %F2 = IMAX.*E1;
+                            F2 = IMAX.*mask(:);
+                            FM_SIN = F2.*sin(2*pi.*obj.note.frequency.*noteTime);
+                            %soundSample = F1.* sin(2*pi*(obj.note.frequency + FM_SIN).*timeVec);
+                            audio=obj.note.amplitude.*mask(:).*sin(2*pi*(obj.note.frequency + FM_SIN).*noteTime);
+                            
+                    %}
+                    %{
                     switch obj.note.instrument
                         case 1%Trumpet Thing
                             IMAX = 2/3;
@@ -88,6 +101,7 @@ classdef objOsc < matlab.System
                             audio=obj.note.amplitude.*mask(:).*sin(2*pi*(obj.note.frequency + FM_SIN).*timeVec);
 
                     end
+                    %}
                end
             end
             obj.currentTime=obj.currentTime+(obj.constants.BufferSize/obj.constants.SamplingRate);      % Advance the internal time
